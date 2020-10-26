@@ -1,0 +1,19 @@
+query($page: Int, $activityId: Int) {
+  Page(page: $page, perPage: 10) {
+    pageInfo {
+      hasNextPage
+    }
+    page: activityReplies(activityId: $activityId) {
+      id
+      activityId
+      user { ...user }
+      text
+    }
+  }
+}
+
+fragment user on User {
+  id
+  name
+  about
+}

@@ -1,0 +1,12 @@
+query($page: Int, $userId: Int, $mediaIds: [Int]) {
+  Page (page: $page) {
+    pageInfo {
+      hasNextPage
+    }
+    page: mediaList(userId: $userId, mediaId_in: $mediaIds) {
+      score(format: POINT_100)
+      notes
+      mediaId
+    }
+  }
+}

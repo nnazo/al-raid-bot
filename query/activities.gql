@@ -1,0 +1,31 @@
+query($page: Int) {
+  Page(page: $page) {
+    pageInfo {
+      hasNextPage
+    }
+    page: activities(sort: ID_DESC, type_in: [TEXT, MESSAGE]) {
+      activityType: __typename
+      ...text
+      ...message
+    }
+  }
+}
+
+fragment text on TextActivity {
+  id
+  text
+  user { ...user }
+}
+
+fragment message on MessageActivity {
+  id
+  text: message
+  user: messenger { ...user }
+  recipient { ...user }
+}
+
+fragment user on User {
+  id
+  name
+  about
+}

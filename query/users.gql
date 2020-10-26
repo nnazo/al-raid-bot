@@ -1,0 +1,14 @@
+query($page: Int) {
+  Page (page: $page, perPage: 10) {
+    pageInfo {
+      hasNextPage
+    }
+    page: users(sort: ID_DESC) { ...user }
+  }
+}
+
+fragment user on User {
+  id
+  name
+  about
+}

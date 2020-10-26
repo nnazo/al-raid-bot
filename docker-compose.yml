@@ -1,0 +1,9 @@
+
+version: '3'
+services:
+  al_raid_bot:
+    container_name: al_raid_bot_docker
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
