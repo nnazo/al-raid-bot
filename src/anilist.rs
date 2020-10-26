@@ -1,4 +1,5 @@
 use crate::resources::Query;
+use crate::util;
 use anyhow::{anyhow, Result};
 use reqwest::{blocking::Client, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -99,18 +100,7 @@ where
                 } else {
                     secs = 60;
                 }
-
-                let begin = std::time::Instant::now();
-                loop {
-                    println!("ratelimiting for {}s...", secs);
-                    let since = std::time::Instant::now().checked_duration_since(begin);
-                    if let Some(since) = since {
-                        if since.as_secs() >= secs {
-                            break;
-                        }
-                    }
-                }
-                
+                util::wait(secs);
                 // time::sleep(time::Duration::from_secs(secs))?;//.await; 
             }
             StatusCode::OK | _ => {

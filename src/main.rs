@@ -12,6 +12,7 @@ pub mod anilist;
 pub mod resources;
 pub mod embeds;
 pub mod webhooks;
+pub mod util;
 
 use webhooks::*;
 
@@ -47,68 +48,80 @@ impl RaidBot {
         loop {
             match self.connection.recv_event() {
                 Ok(Event::MessageCreate(message)) => {
-                    if let Err(err) = self.handle_message(message).await { //.await
-                        println!("message recv err: {:?}", err);
-                        if let Some(_) = self.join_handle {
-                            continue;
-                        }
-                        match &mut self.job {
-                            Some(WebhookJob::Activity(job)) => {
-                                let mut job = job.clone();
-                                self.join_handle = Some(tokio::task::spawn(async move {
-                                    let mut cancel = {
-                                        *CANCEL.lock().unwrap()
-                                    };
-                                    while !cancel {
-                                        match job.job.find_activities(1) { //.await
-                                            Ok(activities) => {
-                                                for (activity, matches) in activities {
-                                                    if let Err(err) = job.send_embed_activity(activity, matches) { //.await
-                                                        println!("could not send user embed: {:?}", err);
-                                                    }
-                                                }
-                                            },
-                                            Err(err) => {
-                                                println!("err in find activities: {:?}", err);
-                                            }
-                                        }
-                                        cancel = {
+                    match self.handle_message(message).await { //.await
+                        Ok(_) => {
+                            if let Some(_) = self.join_handle {
+                                continue;
+                            }
+                            match &mut self.job {
+                                Some(WebhookJob::Activity(job)) => {
+                                    let mut job = job.clone();
+                                    self.join_handle = Some(tokio::task::spawn(async move {
+                                        let mut cancel = {
                                             *CANCEL.lock().unwrap()
                                         };
-                                    }
-                                }));
-                            }
-                            Some(WebhookJob::User(job)) => {
-                                // Look through `depth` pages of users
-                                let mut job = job.clone();
-                                self.join_handle = Some(tokio::task::spawn(async move {
-                                    let mut cancel = {
-                                        *CANCEL.lock().unwrap()
-                                    };
-                                    while !cancel {
-                                        let depth = job.job.depth + 1;
-                                        for page in 1..depth {
-                                            println!("page #: {}", page);
-                                            match job.job.find_users(page) { //.await
-                                                Ok(users) => {
-                                                    for (user, matches) in users {
-                                                        if let Err(err) = job.send_embed_user(user, matches) { //.await
+                                        while !cancel {
+                                            util::wait(10);
+                                            match job.job.find_activities(1) { //.await
+                                                Ok(activities) => {
+                                                    for (activity, matches) in activities {
+                                                        if let Err(err) = job.send_embed_activity(activity, matches) { //.await
                                                             println!("could not send user embed: {:?}", err);
                                                         }
                                                     }
                                                 },
                                                 Err(err) => {
-                                                    println!("err in find users: {:?}", err);
+                                                    println!("err in find activities: {:?}", err);
                                                 }
                                             }
+                                            cancel = {
+                                                *CANCEL.lock().unwrap()
+                                            };
                                         }
-                                        cancel = {
+                                    }));
+                                }
+                                Some(WebhookJob::User(job)) => {
+                                    // Look through `depth` pages of users
+                                    let mut job = job.clone();
+                                    self.join_handle = Some(tokio::task::spawn(async move {
+                                        let mut cancel = {
                                             *CANCEL.lock().unwrap()
                                         };
-                                    }
-                                }));
+                                        loop {
+                                            let depth = job.job.depth + 1;
+                                            for page in 1..depth {
+                                                println!("page #: {}", page);
+                                                match job.job.find_users(page) { //.await
+                                                    Ok(users) => {
+                                                        for (user, matches) in users {
+                                                            if let Err(err) = job.send_embed_user(user, matches) { //.await
+                                                                println!("could not send user embed: {:?}", err);
+                                                            }
+                                                        }
+                                                    },
+                                                    Err(err) => {
+                                                        println!("err in find users: {:?}", err);
+                                                    }
+                                                }
+                                                cancel = {
+                                                    *CANCEL.lock().unwrap()
+                                                };
+                                                if cancel {
+                                                    break;
+                                                }
+                                                util::wait(5);
+                                            }
+                                            if cancel {
+                                                break;
+                                            }
+                                        }
+                                    }));
+                                }
+                                None => {}
                             }
-                            None => {}
+                        },
+                        Err(err) => {
+                            println!("message recv err: {:?}", err);
                         }
                     }
                 }
@@ -135,7 +148,7 @@ impl RaidBot {
                 .next()
                 .ok_or(anyhow!("no command present in iterator"))?;
 
-            if cmd.starts_with("!start-raid") {
+            if cmd.starts_with("!start-task") {
                 let body = cmd_iter
                     .next()
                     .ok_or(anyhow!("no body accompanying command"))?;
@@ -148,23 +161,30 @@ impl RaidBot {
                         job.job.found_activity_ids = Some(BTreeSet::new());
                     }
                 }
+                if let Some(handle) = &mut self.join_handle {
+                    println!("cancelling task to replace it...");
+                    handle.abort();
+                    *CANCEL.lock().unwrap() = true;
+                    println!("task cancelled? {:?}", handle.await);
+                }
+                self.join_handle = None;
                 self.job = Some(job);
                 *CANCEL.lock().unwrap() = false;
                 self.handle_message_response(
                     message.channel_id,
-                    "Started webhook job successfully.",
+                    "Started task successfully. Any previously running task was cancelled.",
                 )?;
-            } else if cmd.starts_with("!stop-raid") {
+            } else if cmd.starts_with("!stop-task") {
                 self.job = None;
                 if let Some(handle) = &mut self.join_handle {
                     println!("cancelling task...");
                     handle.abort();
                     *CANCEL.lock().unwrap() = true;
-                    println!("is cancelled? {:?}", handle.await.unwrap());
+                    println!("task cancelled? {:?}", handle.await);
                 }
                 self.join_handle = None;
                 // self.page = 1;
-                self.handle_message_response(message.channel_id, "Stopping current webhook job.")?;
+                self.handle_message_response(message.channel_id, "Stopping current task.")?;
             }
 
             Ok(())

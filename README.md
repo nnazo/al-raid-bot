@@ -13,13 +13,13 @@ Alternatively,
 2. Run `cargo run --release`
 
 ## Usage
-`!stop-raid`
+`!stop-task`
 Note that this stops the bot after the current task iteration.
 
 To look through recent users:
  * note that depth is the number of pages to look through
 ```
-!start-raid {
+!start-task {
     "User": {
         "channelId": "webhook_channel_id",
         "token": "webhook_token",
@@ -35,7 +35,7 @@ To look through recent users:
 
 To look through recent activities:
 ```
-!start-raid {
+!start-task {
     "Activity": {
         "channelId": "webhook_channel_id",
         "token": "webhook_token",
