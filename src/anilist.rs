@@ -120,6 +120,7 @@ pub fn query_in_media_list(
     media_ids: &Vec<i32>,
 ) -> Result<QueryResponse<PageResponse<MediaListEntries>>> {
     let variables = json!({
+        "page": 1,
         "userId": user_id,
         "mediaIds": media_ids,
     });

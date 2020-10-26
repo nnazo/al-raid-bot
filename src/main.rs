@@ -109,7 +109,7 @@ impl RaidBot {
                                                 if cancel {
                                                     break;
                                                 }
-                                                util::wait(5);
+                                                // util::wait(2);
                                             }
                                             if cancel {
                                                 break;

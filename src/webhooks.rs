@@ -153,6 +153,7 @@ impl ActivityJob {
 }
 
 #[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UserJob {
     /// Check name and bio for keywords
     pub keywords: Vec<String>,
@@ -219,6 +220,7 @@ impl UserJob {
             }
         }
         if let Some(entries) = matched_entries {
+            println!("got entries");
             if let Some(user_matches) = self.flag_user_entries(entries) {
                 for m in user_matches.into_iter() {
                     matches.push(m);
@@ -237,7 +239,8 @@ impl UserJob {
         let mut matches = Vec::new();
         for entry in entries {
             if let Some(score) = entry.score {
-                if score <= max_score as f64 {
+                println!("{} <= {}", score, max_score);
+                if score <= max_score as f64 && score != 0 as f64 {
                     matches.push(("List Entry Score".to_string(), format!("Media ID poorly scored: {}", entry.media_id)));
                 }
             }
